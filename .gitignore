@@ -1,0 +1,5 @@
+/target
+/index
+.DS_Store
+/pages
+remote-test.sh
