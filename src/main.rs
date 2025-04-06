@@ -8,7 +8,6 @@ mod server;
 mod templating;
 mod types;
 mod web_content;
-const PAGES_ROUTE: &str = "./pages";
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

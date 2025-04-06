@@ -26,6 +26,9 @@ pub enum WebContent {
     JavaScript(Vec<u8>),
     Jpeg(Vec<u8>),
     Png(Vec<u8>),
+    Wasm(Vec<u8>),
+    Ico(Vec<u8>),
+    Svg(Vec<u8>),
 }
 
 #[derive(Debug)]
@@ -36,7 +39,6 @@ pub struct ResponseContent {
 
 #[derive(Debug, Deserialize)]
 pub struct Configuration {
-    template: Option<String>,
     headers: Option<HashMap<String, String>>,
 }
 

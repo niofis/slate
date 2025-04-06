@@ -17,6 +17,11 @@ pub fn read_path(url: &UrlPath) -> Option<FileContent> {
     // If this is a folder, it will default to read
     // content.html or content.md
     let mut file_path = absolute_path(url);
+
+    if !file_path.starts_with(absolute_path(&UrlPath(String::from("/")))) {
+        return None;
+    }
+
     if file_path.is_dir() {
         let html = file_path.join("content.html");
         let md = file_path.join("content.md");
@@ -28,6 +33,7 @@ pub fn read_path(url: &UrlPath) -> Option<FileContent> {
             return None;
         }
     }
+
     if file_path.exists() {
         Some(load_file(&file_path))
     } else {

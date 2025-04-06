@@ -5,7 +5,7 @@ use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 
-use crate::types::{GetContentMessage, UrlPath, WebResponse};
+use crate::types::{GetContentMessage, UrlPath, WebContent, WebResponse};
 
 pub async fn start(sender: Sender<GetContentMessage>) -> std::io::Result<()> {
     println!("Server started on 127.0.0.1:8080");
@@ -27,25 +27,36 @@ async fn index(ctx: web::Data<Sender<GetContentMessage>>, req: HttpRequest) -> i
     let response = rx.recv().unwrap();
     match response {
         WebResponse::NotFound => HttpResponse::NotFound().finish(),
-        WebResponse::Redirect(url) => HttpResponse::PermanentRedirect()
+        WebResponse::Redirect(url) => HttpResponse::TemporaryRedirect()
             .append_header(("Location", url))
             .finish(),
         WebResponse::Content(content) => match content {
-            crate::types::WebContent::Html(html) => HttpResponse::Ok()
+            WebContent::Html(html) => HttpResponse::Ok()
                 .append_header(("Content-Type", "text/html"))
+                .append_header(("Cross-Origin-Opener-Policy", "same-origin"))
+                .append_header(("Cross-Origin-Embedder-Policy", "require-corp"))
                 .body(html),
-            crate::types::WebContent::Css(css) => HttpResponse::Ok()
+            WebContent::Css(css) => HttpResponse::Ok()
                 .append_header(("Content-Type", "text/css"))
                 .body(css),
-            crate::types::WebContent::JavaScript(js) => HttpResponse::Ok()
+            WebContent::JavaScript(js) => HttpResponse::Ok()
                 .append_header(("Content-Type", "application/javascript"))
                 .body(js),
-            crate::types::WebContent::Jpeg(jpeg) => HttpResponse::Ok()
+            WebContent::Jpeg(jpeg) => HttpResponse::Ok()
                 .append_header(("Content-Type", "image/jpeg"))
                 .body(jpeg),
-            crate::types::WebContent::Png(png) => HttpResponse::Ok()
+            WebContent::Png(png) => HttpResponse::Ok()
                 .append_header(("Content-Type", "image/png"))
                 .body(png),
+            WebContent::Wasm(wasm) => HttpResponse::Ok()
+                .append_header(("Content-Type", "application/wasm"))
+                .body(wasm),
+            WebContent::Ico(ico) => HttpResponse::Ok()
+                .append_header(("Content-Type", "image/ico"))
+                .body(ico),
+            WebContent::Svg(svg) => HttpResponse::Ok()
+                .append_header(("Content-Type", "image/svg"))
+                .body(svg),
         },
     }
 }

@@ -2,4 +2,6 @@
 /index
 .DS_Store
 /pages
+/components
+/public
 remote-test.sh

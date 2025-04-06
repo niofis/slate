@@ -3,7 +3,7 @@ use std::{sync::mpsc::Receiver, thread};
 use crate::{
     file_system,
     templating::Template,
-    types::{Configuration, GetContentMessage, WebResponse},
+    types::{Configuration, GetContentMessage, UrlPath, WebResponse},
     web_content::process_content,
 };
 
@@ -19,6 +19,16 @@ pub fn start(rx: Receiver<GetContentMessage>) {
                     .map(|file| serde_json::from_slice::<Configuration>(&file.content).unwrap());
                 let template = file_system::find_file(&url_path, "template.html")
                     .map(|file| Template::new(file));
+                if let Some(redirect) =
+                    file_system::read_path(&UrlPath(format!("{}{}", url_path.0, "url.redirect")))
+                {
+                    let goto = String::from_utf8(redirect.content)
+                        .unwrap()
+                        .trim()
+                        .to_string();
+                    tx.send(WebResponse::Redirect(goto)).unwrap();
+                    continue;
+                }
 
                 let file = file_system::read_path(&url_path);
                 match file {

@@ -1,3 +1,5 @@
+use markdown::{CompileOptions, Options, ParseOptions};
+
 use crate::{
     templating::Template,
     types::{Configuration, FileContent, HtmlString, WebContent},
@@ -27,12 +29,26 @@ pub fn process_content(
         "css" => WebContent::Css(file_content.content),
         "jpeg" => WebContent::Jpeg(file_content.content),
         "png" => WebContent::Png(file_content.content),
+        "wasm" => WebContent::Wasm(file_content.content),
+        "ico" => WebContent::Ico(file_content.content),
+        "svg" => WebContent::Svg(file_content.content),
         _ => WebContent::Html(String::from("unsuported").into_bytes()),
     }
 }
 
 fn process_markdown(md: Vec<u8>) -> Vec<u8> {
     let md_str = String::from_utf8(md).unwrap();
-    let html = markdown::to_html(&md_str);
+    let html = markdown::to_html_with_options(
+        &md_str,
+        &Options {
+            parse: ParseOptions::gfm(),
+            compile: CompileOptions {
+                allow_dangerous_html: true,
+                allow_dangerous_protocol: true,
+                ..CompileOptions::default()
+            },
+        },
+    )
+    .unwrap();
     html.into_bytes()
 }
