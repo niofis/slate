@@ -29,6 +29,7 @@ pub enum WebContent {
     Wasm(Vec<u8>),
     Ico(Vec<u8>),
     Svg(Vec<u8>),
+    Woff2(Vec<u8>),
 }
 
 #[derive(Debug)]

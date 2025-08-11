@@ -32,6 +32,7 @@ pub fn process_content(
         "wasm" => WebContent::Wasm(file_content.content),
         "ico" => WebContent::Ico(file_content.content),
         "svg" => WebContent::Svg(file_content.content),
+        "woff2" => WebContent::Woff2(file_content.content),
         _ => WebContent::Html(String::from("unsuported").into_bytes()),
     }
 }

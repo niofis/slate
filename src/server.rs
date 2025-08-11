@@ -57,6 +57,9 @@ async fn index(ctx: web::Data<Sender<GetContentMessage>>, req: HttpRequest) -> i
             WebContent::Svg(svg) => HttpResponse::Ok()
                 .append_header(("Content-Type", "image/svg"))
                 .body(svg),
+            WebContent::Woff2(woff2) => HttpResponse::Ok()
+                .append_header(("Content-Type", "font/woff2"))
+                .body(woff2),
         },
     }
 }
