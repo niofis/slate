@@ -4,6 +4,7 @@ use actix_web::{
     web::{self},
     App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
+use log::info;
 
 use crate::types::{GetContentMessage, UrlPath, WebContent, WebResponse};
 
@@ -21,11 +22,17 @@ pub async fn start(sender: Sender<GetContentMessage>) -> std::io::Result<()> {
 
 async fn index(ctx: web::Data<Sender<GetContentMessage>>, req: HttpRequest) -> impl Responder {
     let route = req.path().to_string();
+    let method = req.method().to_string();
+    let client_ip = req.connection_info().realip_remote_addr()
+        .unwrap_or("unknown")
+        .to_string();
+
     let (tx, rx) = channel();
-    ctx.send(GetContentMessage(UrlPath(route), tx.clone()))
+    ctx.send(GetContentMessage(UrlPath(route.clone()), tx.clone()))
         .unwrap();
     let response = rx.recv().unwrap();
-    match response {
+    
+    let http_response = match response {
         WebResponse::NotFound => HttpResponse::NotFound().finish(),
         WebResponse::Redirect(url) => HttpResponse::TemporaryRedirect()
             .append_header(("Location", url))
@@ -61,5 +68,10 @@ async fn index(ctx: web::Data<Sender<GetContentMessage>>, req: HttpRequest) -> i
                 .append_header(("Content-Type", "font/woff2"))
                 .body(woff2),
         },
-    }
+    };
+
+    let status_code = http_response.status().as_u16();
+    info!("{} - {} {} {}", client_ip, method, route, status_code);
+    
+    http_response
 }
