@@ -32,53 +32,45 @@ async fn index(ctx: web::Data<Sender<GetContentMessage>>, req: HttpRequest) -> i
         .unwrap();
     let response = rx.recv().unwrap();
     
-    let (http_response, status_code) = match response {
-        WebResponse::NotFound => {
-            let resp = HttpResponse::NotFound().finish();
-            (resp, 404)
-        },
-        WebResponse::Redirect(url) => {
-            let resp = HttpResponse::TemporaryRedirect()
-                .append_header(("Location", url))
-                .finish();
-            (resp, 307)
-        },
-        WebResponse::Content(content) => {
-            let resp = match content {
-                WebContent::Html(html) => HttpResponse::Ok()
-                    .append_header(("Content-Type", "text/html"))
-                    .append_header(("Cross-Origin-Opener-Policy", "same-origin"))
-                    .append_header(("Cross-Origin-Embedder-Policy", "require-corp"))
-                    .body(html),
-                WebContent::Css(css) => HttpResponse::Ok()
-                    .append_header(("Content-Type", "text/css"))
-                    .body(css),
-                WebContent::JavaScript(js) => HttpResponse::Ok()
-                    .append_header(("Content-Type", "application/javascript"))
-                    .body(js),
-                WebContent::Jpeg(jpeg) => HttpResponse::Ok()
-                    .append_header(("Content-Type", "image/jpeg"))
-                    .body(jpeg),
-                WebContent::Png(png) => HttpResponse::Ok()
-                    .append_header(("Content-Type", "image/png"))
-                    .body(png),
-                WebContent::Wasm(wasm) => HttpResponse::Ok()
-                    .append_header(("Content-Type", "application/wasm"))
-                    .body(wasm),
-                WebContent::Ico(ico) => HttpResponse::Ok()
-                    .append_header(("Content-Type", "image/ico"))
-                    .body(ico),
-                WebContent::Svg(svg) => HttpResponse::Ok()
-                    .append_header(("Content-Type", "image/svg"))
-                    .body(svg),
-                WebContent::Woff2(woff2) => HttpResponse::Ok()
-                    .append_header(("Content-Type", "font/woff2"))
-                    .body(woff2),
-            };
-            (resp, 200)
+    let http_response = match response {
+        WebResponse::NotFound => HttpResponse::NotFound().finish(),
+        WebResponse::Redirect(url) => HttpResponse::TemporaryRedirect()
+            .append_header(("Location", url))
+            .finish(),
+        WebResponse::Content(content) => match content {
+            WebContent::Html(html) => HttpResponse::Ok()
+                .append_header(("Content-Type", "text/html"))
+                .append_header(("Cross-Origin-Opener-Policy", "same-origin"))
+                .append_header(("Cross-Origin-Embedder-Policy", "require-corp"))
+                .body(html),
+            WebContent::Css(css) => HttpResponse::Ok()
+                .append_header(("Content-Type", "text/css"))
+                .body(css),
+            WebContent::JavaScript(js) => HttpResponse::Ok()
+                .append_header(("Content-Type", "application/javascript"))
+                .body(js),
+            WebContent::Jpeg(jpeg) => HttpResponse::Ok()
+                .append_header(("Content-Type", "image/jpeg"))
+                .body(jpeg),
+            WebContent::Png(png) => HttpResponse::Ok()
+                .append_header(("Content-Type", "image/png"))
+                .body(png),
+            WebContent::Wasm(wasm) => HttpResponse::Ok()
+                .append_header(("Content-Type", "application/wasm"))
+                .body(wasm),
+            WebContent::Ico(ico) => HttpResponse::Ok()
+                .append_header(("Content-Type", "image/ico"))
+                .body(ico),
+            WebContent::Svg(svg) => HttpResponse::Ok()
+                .append_header(("Content-Type", "image/svg"))
+                .body(svg),
+            WebContent::Woff2(woff2) => HttpResponse::Ok()
+                .append_header(("Content-Type", "font/woff2"))
+                .body(woff2),
         },
     };
 
+    let status_code = http_response.status().as_u16();
     info!("{} - {} {} {}", client_ip, method, route, status_code);
     
     http_response
