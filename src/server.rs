@@ -4,6 +4,7 @@ use actix_web::{
     web::{self},
     App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
+use log::info;
 
 use crate::types::{GetContentMessage, UrlPath, WebContent, WebResponse};
 
@@ -21,6 +22,17 @@ pub async fn start(sender: Sender<GetContentMessage>) -> std::io::Result<()> {
 
 async fn index(ctx: web::Data<Sender<GetContentMessage>>, req: HttpRequest) -> impl Responder {
     let route = req.path().to_string();
+    let method = req.method().to_string();
+    let client_ip = req.connection_info().realip_remote_addr()
+        .unwrap_or("unknown")
+        .to_string();
+    
+    // Log the request with all required information
+    info!(
+        "Request: method={} path={} client_ip={}",
+        method, route, client_ip
+    );
+
     let (tx, rx) = channel();
     ctx.send(GetContentMessage(UrlPath(route), tx.clone()))
         .unwrap();

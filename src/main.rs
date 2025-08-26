@@ -11,6 +11,8 @@ mod web_content;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init();
+
     let (tx, rx) = channel::<GetContentMessage>();
 
     content_manager::start(rx);
