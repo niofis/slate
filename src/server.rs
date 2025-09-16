@@ -6,13 +6,17 @@ use actix_web::{
 };
 use log::info;
 
-use crate::types::{GetContentMessage, UrlPath, WebContent, WebResponse};
+use crate::{
+    stats::StatsManager,
+    types::{GetContentMessage, UrlPath, WebContent, WebResponse}
+};
 
-pub async fn start(sender: Sender<GetContentMessage>) -> std::io::Result<()> {
+pub async fn start(sender: Sender<GetContentMessage>, stats_manager: StatsManager) -> std::io::Result<()> {
     println!("Server started on 127.0.0.1:8080");
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(sender.clone()))
+            .app_data(web::Data::new(stats_manager.clone()))
             .default_service(web::to(index))
     })
     .bind(("127.0.0.1", 8080))?
@@ -20,7 +24,11 @@ pub async fn start(sender: Sender<GetContentMessage>) -> std::io::Result<()> {
     .await
 }
 
-async fn index(ctx: web::Data<Sender<GetContentMessage>>, req: HttpRequest) -> impl Responder {
+async fn index(
+    ctx: web::Data<Sender<GetContentMessage>>, 
+    stats: web::Data<StatsManager>,
+    req: HttpRequest
+) -> impl Responder {
     let route = req.path().to_string();
     let method = req.method().to_string();
     let client_ip = req.connection_info().realip_remote_addr()
@@ -37,36 +45,43 @@ async fn index(ctx: web::Data<Sender<GetContentMessage>>, req: HttpRequest) -> i
         WebResponse::Redirect(url) => HttpResponse::TemporaryRedirect()
             .append_header(("Location", url))
             .finish(),
-        WebResponse::Content(content) => match content {
-            WebContent::Html(html) => HttpResponse::Ok()
-                .append_header(("Content-Type", "text/html"))
-                .append_header(("Cross-Origin-Opener-Policy", "same-origin"))
-                .append_header(("Cross-Origin-Embedder-Policy", "require-corp"))
-                .body(html),
-            WebContent::Css(css) => HttpResponse::Ok()
-                .append_header(("Content-Type", "text/css"))
-                .body(css),
-            WebContent::JavaScript(js) => HttpResponse::Ok()
-                .append_header(("Content-Type", "application/javascript"))
-                .body(js),
-            WebContent::Jpeg(jpeg) => HttpResponse::Ok()
-                .append_header(("Content-Type", "image/jpeg"))
-                .body(jpeg),
-            WebContent::Png(png) => HttpResponse::Ok()
-                .append_header(("Content-Type", "image/png"))
-                .body(png),
-            WebContent::Wasm(wasm) => HttpResponse::Ok()
-                .append_header(("Content-Type", "application/wasm"))
-                .body(wasm),
-            WebContent::Ico(ico) => HttpResponse::Ok()
-                .append_header(("Content-Type", "image/ico"))
-                .body(ico),
-            WebContent::Svg(svg) => HttpResponse::Ok()
-                .append_header(("Content-Type", "image/svg"))
-                .body(svg),
-            WebContent::Woff2(woff2) => HttpResponse::Ok()
-                .append_header(("Content-Type", "font/woff2"))
-                .body(woff2),
+        WebResponse::Content(content) => {
+            // Record visit statistics for successful content delivery
+            if client_ip != "unknown" {
+                stats.record_visit(&client_ip, &route);
+            }
+            
+            match content {
+                WebContent::Html(html) => HttpResponse::Ok()
+                    .append_header(("Content-Type", "text/html"))
+                    .append_header(("Cross-Origin-Opener-Policy", "same-origin"))
+                    .append_header(("Cross-Origin-Embedder-Policy", "require-corp"))
+                    .body(html),
+                WebContent::Css(css) => HttpResponse::Ok()
+                    .append_header(("Content-Type", "text/css"))
+                    .body(css),
+                WebContent::JavaScript(js) => HttpResponse::Ok()
+                    .append_header(("Content-Type", "application/javascript"))
+                    .body(js),
+                WebContent::Jpeg(jpeg) => HttpResponse::Ok()
+                    .append_header(("Content-Type", "image/jpeg"))
+                    .body(jpeg),
+                WebContent::Png(png) => HttpResponse::Ok()
+                    .append_header(("Content-Type", "image/png"))
+                    .body(png),
+                WebContent::Wasm(wasm) => HttpResponse::Ok()
+                    .append_header(("Content-Type", "application/wasm"))
+                    .body(wasm),
+                WebContent::Ico(ico) => HttpResponse::Ok()
+                    .append_header(("Content-Type", "image/ico"))
+                    .body(ico),
+                WebContent::Svg(svg) => HttpResponse::Ok()
+                    .append_header(("Content-Type", "image/svg"))
+                    .body(svg),
+                WebContent::Woff2(woff2) => HttpResponse::Ok()
+                    .append_header(("Content-Type", "font/woff2"))
+                    .body(woff2),
+            }
         },
     };
 
