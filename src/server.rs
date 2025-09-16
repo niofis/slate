@@ -41,7 +41,11 @@ async fn index(
     let response = rx.recv().unwrap();
     
     let http_response = match response {
-        WebResponse::NotFound => HttpResponse::NotFound().finish(),
+        WebResponse::NotFound => {
+            // Record 404 error for analysis
+            stats.record_404_error(&route);
+            HttpResponse::NotFound().finish()
+        },
         WebResponse::Redirect(url) => HttpResponse::TemporaryRedirect()
             .append_header(("Location", url))
             .finish(),

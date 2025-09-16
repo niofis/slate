@@ -16,7 +16,8 @@ impl StatsManager {
         conn.execute(
             "CREATE TABLE IF NOT EXISTS unique_visitors (
                 ip_address TEXT PRIMARY KEY,
-                last_visit TEXT NOT NULL
+                last_visit TEXT NOT NULL,
+                visit_count INTEGER NOT NULL DEFAULT 0
             )",
             [],
         )?;
@@ -39,6 +40,15 @@ impl StatsManager {
             [],
         )?;
 
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS error_404 (
+                url TEXT PRIMARY KEY,
+                access_count INTEGER NOT NULL DEFAULT 0,
+                last_access TEXT NOT NULL
+            )",
+            [],
+        )?;
+
         info!("Statistics database initialized at {}", db_path);
         
         Ok(StatsManager {
@@ -49,6 +59,12 @@ impl StatsManager {
     pub fn record_visit(&self, ip_address: &str, url: &str) {
         if let Err(e) = self.record_visit_internal(ip_address, url) {
             error!("Failed to record visit for {} on {}: {}", ip_address, url, e);
+        }
+    }
+
+    pub fn record_404_error(&self, url: &str) {
+        if let Err(e) = self.record_404_error_internal(url) {
+            error!("Failed to record 404 error for {}: {}", url, e);
         }
     }
 
@@ -64,7 +80,10 @@ impl StatsManager {
 
         // Update unique visitors
         db.execute(
-            "INSERT OR REPLACE INTO unique_visitors (ip_address, last_visit) VALUES (?1, ?2)",
+            "INSERT INTO unique_visitors (ip_address, last_visit, visit_count) VALUES (?1, ?2, 1)
+             ON CONFLICT(ip_address) DO UPDATE SET 
+             last_visit = ?2, 
+             visit_count = visit_count + 1",
             [ip_address, &now],
         )?;
 
@@ -82,6 +101,29 @@ impl StatsManager {
         )?;
 
         debug!("Recorded visit: {} -> {}", ip_address, url);
+        Ok(())
+    }
+
+    fn record_404_error_internal(&self, url: &str) -> Result<()> {
+        let db = self.db.lock().map_err(|e| {
+            rusqlite::Error::SqliteFailure(
+                rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_BUSY),
+                Some(format!("Failed to acquire lock: {}", e))
+            )
+        })?;
+
+        let now = Utc::now().to_rfc3339();
+
+        // Update 404 errors tracking
+        db.execute(
+            "INSERT INTO error_404 (url, access_count, last_access) VALUES (?1, 1, ?2)
+             ON CONFLICT(url) DO UPDATE SET 
+             access_count = access_count + 1, 
+             last_access = ?2",
+            [url, &now],
+        )?;
+
+        debug!("Recorded 404 error: {}", url);
         Ok(())
     }
 
