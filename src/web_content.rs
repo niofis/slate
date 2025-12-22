@@ -33,6 +33,7 @@ pub fn process_content(
         "ico" => WebContent::Ico(file_content.content),
         "svg" => WebContent::Svg(file_content.content),
         "woff2" => WebContent::Woff2(file_content.content),
+        "zip" => WebContent::Zip(file_content.content),
         _ => WebContent::Html(String::from("unsuported").into_bytes()),
     }
 }

@@ -8,10 +8,13 @@ use log::info;
 
 use crate::{
     stats::StatsManager,
-    types::{GetContentMessage, UrlPath, WebContent, WebResponse}
+    types::{GetContentMessage, UrlPath, WebContent, WebResponse},
 };
 
-pub async fn start(sender: Sender<GetContentMessage>, stats_manager: StatsManager) -> std::io::Result<()> {
+pub async fn start(
+    sender: Sender<GetContentMessage>,
+    stats_manager: StatsManager,
+) -> std::io::Result<()> {
     println!("Server started on 127.0.0.1:8080");
     HttpServer::new(move || {
         App::new()
@@ -25,13 +28,15 @@ pub async fn start(sender: Sender<GetContentMessage>, stats_manager: StatsManage
 }
 
 async fn index(
-    ctx: web::Data<Sender<GetContentMessage>>, 
+    ctx: web::Data<Sender<GetContentMessage>>,
     stats: web::Data<StatsManager>,
-    req: HttpRequest
+    req: HttpRequest,
 ) -> impl Responder {
     let route = req.path().to_string();
     let method = req.method().to_string();
-    let client_ip = req.connection_info().realip_remote_addr()
+    let client_ip = req
+        .connection_info()
+        .realip_remote_addr()
         .unwrap_or("unknown")
         .to_string();
 
@@ -39,13 +44,13 @@ async fn index(
     ctx.send(GetContentMessage(UrlPath(route.clone()), tx.clone()))
         .unwrap();
     let response = rx.recv().unwrap();
-    
+
     let http_response = match response {
         WebResponse::NotFound => {
             // Record 404 error for analysis
             stats.record_404_error(&route);
             HttpResponse::NotFound().finish()
-        },
+        }
         WebResponse::Redirect(url) => HttpResponse::TemporaryRedirect()
             .append_header(("Location", url))
             .finish(),
@@ -54,7 +59,7 @@ async fn index(
             if client_ip != "unknown" {
                 stats.record_visit(&client_ip, &route);
             }
-            
+
             match content {
                 WebContent::Html(html) => HttpResponse::Ok()
                     .append_header(("Content-Type", "text/html"))
@@ -85,12 +90,15 @@ async fn index(
                 WebContent::Woff2(woff2) => HttpResponse::Ok()
                     .append_header(("Content-Type", "font/woff2"))
                     .body(woff2),
+                WebContent::Zip(zip) => HttpResponse::Ok()
+                    .append_header(("Content-Type", "application/zip"))
+                    .body(zip),
             }
-        },
+        }
     };
 
     let status_code = http_response.status().as_u16();
     info!("{} - {} {} {}", client_ip, method, route, status_code);
-    
+
     http_response
 }
